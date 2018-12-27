@@ -4,13 +4,13 @@ matrix:
   include:
   - name: "Python 3.6 Unit Test"
     python: "3.6"
-    env: PYSTAN_VERSION=latest  
+    env: PYSTAN_VERSION="latest" NAME="PY36MAJOR"
   - name: "Python 3.5 Unit Test"
     python: "3.5"
-    env: PYSTAN_VERSION=latest  
+    env: PYSTAN_VERSION="latest" NAME="PY35MAJOR"
   - name: "PyStan preview Unit Test"
     python: "3.6"
-    env: PYSTAN_VERSION=preview 
+    env: PYSTAN_VERSION="preview" NAME="PY36MINOR"
 
 addons:
   apt_packages:
@@ -35,10 +35,10 @@ before_script:
 - export MKL_THREADING_LAYER=GNU
 
 script:
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then . ./scripts/lint.sh ; fi
+  - if [[ $NAME == "PY36MAJOR" ]]; then . ./scripts/lint.sh ; fi
   - pytest -v arviz/tests/ --cov=arviz/
-  - travis-sphinx build --nowarn --source=doc
+  - if [[ $NAME == "PY36MAJOR" ]]; then travis-sphinx build --nowarn --source=doc ; fi
 
 after_success:
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then travis-sphinx deploy; fi
+  - if [[ $NAME == "PY36MAJOR" ]]; then travis-sphinx deploy; fi
   - coveralls

@@ -22,6 +22,7 @@ from .helpers import (  # pylint: disable=unused-import
     eight_schools_params,
     load_cached_models,
     pystan_extract_unpermuted,
+    stan_extract_dict,
 )
 
 
@@ -244,12 +245,20 @@ class TestDictNetCDFUtils:
         # Data of the Eight Schools Model
 
         class Data:
-            _, stan_fit = load_cached_models(eight_schools_params, draws, chains)["pystan"]
-            stan_dict = pystan_extract_unpermuted(stan_fit)
-            obj = {}
-            for name, vals in stan_dict.items():
-                if name not in {"y_hat", "log_lik"}:  # extra vars
-                    obj[name] = np.swapaxes(vals, 0, 1)
+            try:
+                _, stan_fit = load_cached_models(eight_schools_params, draws, chains)["pystan"]
+                stan_dict = pystan_extract_unpermuted(stan_fit)
+                obj = {}
+                for name, vals in stan_dict.items():
+                    if name not in {"y_hat", "log_lik"}:  # extra vars
+                        obj[name] = np.swapaxes(vals, 0, 1)
+            except KeyError:
+                _, stan_fit = load_cached_models(eight_schools_params, draws, chains)["stan"]
+                stan_dict = stan_extract_dict(stan_fit)
+                obj = {}
+                for name, vals in stan_dict.items():
+                    if name not in {"y_hat", "log_lik"}:  # extra vars
+                        obj[name] = vals
 
         return Data
 
@@ -340,7 +349,10 @@ class TestPyStanNetCDFUtils:
     @pytest.fixture(scope="class")
     def data(self, draws, chains):
         class Data:
-            model, obj = load_cached_models(eight_schools_params, draws, chains)["pystan"]
+            try:
+                model, obj = load_cached_models(eight_schools_params, draws, chains)["pystan"]
+            except KeyError:
+                model, obj = load_cached_models(eight_schools_params, draws, chains)["stan"]
 
         return Data
 
@@ -361,6 +373,8 @@ class TestPyStanNetCDFUtils:
                 "y_hat": ["school"],
                 "theta_tilde": ["school"],
             },
+            posterior_model=data.model,
+            prior_model=data.model,
         )
 
     def get_inference_data2(self, data, eight_schools_params):

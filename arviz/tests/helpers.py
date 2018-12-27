@@ -16,11 +16,11 @@ from pyro.infer.mcmc import MCMC, NUTS
 try:
     import pystan
 
-    STAN = 2
+    STAN_VERSION = 2
 except ImportError:
     import stan
 
-    STAN = 3
+    STAN_VERSION = 3
 except:
     raise
 
@@ -234,7 +234,7 @@ def pystan_noncentered_schools(data, draws, chains):
             }
         }
     """
-    if STAN == 2:
+    if STAN_VERSION == 2:
         stan_model = pystan.StanModel(model_code=schools_code)
         fit = stan_model.sampling(data=data, iter=draws, warmup=0, chains=chains)
     else:
@@ -258,13 +258,23 @@ def pymc3_noncentered_schools(data, draws, chains):
 def load_cached_models(eight_school_params, draws, chains):
     """Load pymc3, pystan, emcee, and pyro models from pickle."""
     here = os.path.dirname(os.path.abspath(__file__))
-    supported = (
-        (tfp, tfp_noncentered_schools),
-        (pystan, pystan_noncentered_schools),
-        (pm, pymc3_noncentered_schools),
-        (emcee, emcee_linear_model),
-        (pyro, pyro_centered_schools),
-    )
+    if STAN_VERSION == 2:
+        supported = (
+            (tfp, tfp_noncentered_schools),
+            (pystan, pystan_noncentered_schools),
+            (pm, pymc3_noncentered_schools),
+            (emcee, emcee_linear_model),
+            (pyro, pyro_centered_schools),
+        )
+    else:
+        supported = (
+            (tfp, tfp_noncentered_schools),
+            (stan, pystan_noncentered_schools),
+            (pm, pymc3_noncentered_schools),
+            (emcee, emcee_linear_model),
+            (pyro, pyro_centered_schools),
+        )
+
     data_directory = os.path.join(here, "saved_models")
     models = {}
 
@@ -314,3 +324,33 @@ def pystan_extract_unpermuted(fit, var_names=None):
             ary = ary.reshape((-1, nchain, *ary_shape), order="F")
             extract[key] = ary
     return extract
+
+
+def stan_extract_dict(fit, var_names=None):
+    """Extract draws from PyStan3 fit.
+
+    Function returns everything as a float
+    """
+    if var_names is None:
+        var_names = fit.param_names
+    elif isinstance(var_names, str):
+        var_names = [var_names]
+    var_names = list(var_names)
+
+    data = dict()
+
+    for var in var_names:
+        if var in data:
+            continue
+
+        new_shape = (
+            *fit.dims[fit.param_names.index(var)],
+            -1,
+            fit.num_chains,
+        )  # pylint: disable=protected-access
+        values = fit._draws[fit._parameter_indexes(var), :]  # pylint: disable=protected-access
+        values = values.reshape(new_shape, order="F")
+        values = np.moveaxis(values, [-2, -1], [1, 0])
+        data[var] = values
+
+    return data
