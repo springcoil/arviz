@@ -1,12 +1,16 @@
 language: python
 
-python:
-  - "3.6"
-  - "3.5"
-
-env:
-  - PYSTAN_VERSION=latest
-  - PYSTAN_VERSION=preview
+matrix:
+  include:
+  - name: "Python 3.6 Unit Test"
+    python: "3.6"
+    env: PYSTAN_VERSION=latest  
+  - name: "Python 3.5 Unit Test"
+    python: "3.5"
+    env: PYSTAN_VERSION=latest  
+  - name: "PyStan preview Unit Test"
+    python: "3.6"
+    env: PYSTAN_VERSION=preview 
 
 addons:
   apt_packages:
