@@ -167,6 +167,7 @@ class PyStanConverter:
 class PyStan3Converter:
     """Encapsulate PyStan3 specific logic."""
 
+    # pylint disable=too-many-instance-attributes, import-error
     def __init__(
         self,
         *_,
@@ -456,13 +457,14 @@ def get_draws_stan3(fit, model=None, variables=None, ignore=None):
     return data
 
 
+# pylint disable=protected-access
 def get_sample_stats_stan3(fit, model=None, log_likelihood=None):
     """Extract sample stats from PyStan3 fit."""
     dtypes = {"divergent__": bool, "n_leapfrog__": np.int64, "treedepth__": np.int64}
 
     data = OrderedDict()
     for key in fit.sample_and_sampler_param_names:
-        values = fit._draws[fit._parameter_indexes(key)]  # pylint disable=protected-access
+        values = fit._draws[fit._parameter_indexes(key)]
         values = np.moveaxis(values, [-2, -1], [0, 1])
         dtype = dtypes.get(key)
         values = values.astype(dtype)
