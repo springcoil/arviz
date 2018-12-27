@@ -33,6 +33,7 @@ class PyStanConverter:
         self.log_likelihood = log_likelihood
         self.coords = coords
         self.dims = dims
+
         import pystan
 
         self.pystan = pystan
@@ -190,6 +191,7 @@ class PyStan3Converter:
         self.log_likelihood = log_likelihood
         self.coords = coords
         self.dims = dims
+
         import stan
 
         self.stan = stan
@@ -282,7 +284,7 @@ class PyStan3Converter:
         prior = self.prior
         prior_model = self.prior_model
         prior_predictive = self.prior_predictive
-        data = get_draws(prior, model=prior_model, variables=prior_predictive)
+        data = get_draws_stan3(prior, model=prior_model, variables=prior_predictive)
         return dict_to_dataset(data, library=self.stan, coords=self.coords, dims=self.dims)
 
     @requires("posterior_model")
@@ -305,7 +307,7 @@ class PyStan3Converter:
                 vals.shape, key, dims=val_dims, coords=self.coords
             )
             observed_data[key] = xr.DataArray(vals, dims=val_dims, coords=coords)
-        return xr.Dataset(data_vars=observed_data, attrs=make_attrs(library=self.pystan))
+        return xr.Dataset(data_vars=observed_data, attrs=make_attrs(library=self.stan))
 
     def to_inference_data(self):
         """Convert all available data to an InferenceData object.
@@ -400,8 +402,8 @@ def get_sample_stats(fit, log_likelihood=None):
         if chain == 0:
             for key in pyholder["sampler_param_names"]:
                 extraction[key] = []
-    for key, values in zip(pyholder["sampler_param_names"], pyholder["sampler_params"]):
-        extraction[key].append(values[-ndraws:])
+        for key, values in zip(pyholder["sampler_param_names"], pyholder["sampler_params"]):
+            extraction[key].append(values[-ndraws:])
 
     data = OrderedDict()
     for key, values in extraction.items():
@@ -448,7 +450,8 @@ def get_draws_stan3(fit, model=None, variables=None, ignore=None):
 
         values = fit[var]
         values = np.moveaxis(values, [-2, -1], [0, 1])
-        data[var] = values.astype(dtype)
+        values = values.astype(dtype)
+        data[var] = values
 
     return data
 
@@ -459,7 +462,7 @@ def get_sample_stats_stan3(fit, model=None, log_likelihood=None):
 
     data = OrderedDict()
     for key in fit.sample_and_sampler_param_names:
-        values = fit._draws[fit._parameter_indexes(key)]
+        values = fit._draws[fit._parameter_indexes(key)]  # pylint disable=protected-access
         values = np.moveaxis(values, [-2, -1], [0, 1])
         dtype = dtypes.get(key)
         values = values.astype(dtype)
@@ -469,7 +472,7 @@ def get_sample_stats_stan3(fit, model=None, log_likelihood=None):
 
     # log_likelihood
     if log_likelihood is not None:
-        log_likelihood_data = get_draws_stan3(fit, model=None, variables=log_likelihood)
+        log_likelihood_data = get_draws_stan3(fit, model=model, variables=log_likelihood)
         data["log_likelihood"] = log_likelihood_data[log_likelihood]
 
     return data
@@ -506,6 +509,7 @@ def infer_dtypes(fit, model=None):
     return dtypes
 
 
+# pylint disable=too-many-instance-attributes
 def from_pystan(
     *,
     posterior=None,
@@ -551,8 +555,8 @@ def from_pystan(
     -------
     InferenceData object
     """
-    check_posterior = (posterior is not None) and (type(posterior).__name__ == "Fit")
-    check_prior = (prior is not None) and (type(prior).__name__ == "Fit")
+    check_posterior = (posterior is not None) and (type(posterior).__module__ == "stan.fit")
+    check_prior = (prior is not None) and (type(prior).__module__ == "stan.fit")
     if check_posterior or check_prior:
         return PyStan3Converter(
             posterior=posterior,
