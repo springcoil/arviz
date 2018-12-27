@@ -449,8 +449,11 @@ def get_draws_stan3(fit, model=None, variables=None, ignore=None):
             continue
         dtype = dtypes.get(var)
 
-        values = fit[var]
-        values = np.moveaxis(values, [-2, -1], [0, 1])
+        # todo: correct number of draws if fit.save_warmup is True
+        new_shape = *fit.dims[fit.param_names.index(var)], -1, fit.num_chains
+        values = fit._draws[fit._parameter_indexes(var), :]
+        values = values.reshape(new_shape, order="F")
+        values = np.moveaxis(values, [-2, -1], [1, 0])
         values = values.astype(dtype)
         data[var] = values
 
@@ -464,8 +467,10 @@ def get_sample_stats_stan3(fit, model=None, log_likelihood=None):
 
     data = OrderedDict()
     for key in fit.sample_and_sampler_param_names:
+        new_shape = -1, fit.num_chains
         values = fit._draws[fit._parameter_indexes(key)]
-        values = np.moveaxis(values, [-2, -1], [0, 1])
+        values = values.reshape(new_shape, order="F")
+        values = np.moveaxis(values, [-2, -1], [1, 0])
         dtype = dtypes.get(key)
         values = values.astype(dtype)
         name = re.sub("__$", "", key)
