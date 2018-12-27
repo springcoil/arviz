@@ -46,7 +46,12 @@ fi
 if [ "$PYSTAN_VERSION" = "latest" ]; then
     pip --no-cache-dir install pystan
 else
-    pip --no-cache-dir install pystan==${PYSTAN_VERSION}
+    if [ "$PYSTAN_VERSION" = "preview" ]; then
+        # PyStan3 preview
+        pip --no-cache-dir install --pre pystan
+    else
+        pip --no-cache-dir install pystan==${PYSTAN_VERSION}
+    fi
 fi
 
 pip install --upgrade pip

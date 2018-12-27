@@ -5,8 +5,8 @@ python:
   - "3.5"
 
 env:
-  - PYSTAN_VERSION=2.17
   - PYSTAN_VERSION=latest
+  - PYSTAN_VERSION=preview
 
 addons:
   apt_packages:

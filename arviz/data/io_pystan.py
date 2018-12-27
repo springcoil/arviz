@@ -498,8 +498,10 @@ def infer_dtypes(fit, model=None):
     )
     if model is None:
         stan_code = fit.get_stancode()
+        model_pars = fit.model_pars
     else:
         stan_code = model.program_code
+        model_pars = fit.param_names
     # remove deprecated comments
     stan_code = "\n".join(
         line if "#" not in line else line[: line.find("#")] for line in stan_code.splitlines()
@@ -507,7 +509,7 @@ def infer_dtypes(fit, model=None):
     stan_code = re.sub(pattern_remove_comments, "", stan_code)
     stan_code = stan_code.split("generated quantities")[-1]
     dtypes = re.findall(pattern_int, stan_code)
-    dtypes = {item.strip(): "int" for item in dtypes if item.strip() in fit.model_pars}
+    dtypes = {item.strip(): "int" for item in dtypes if item.strip() in model_pars}
     return dtypes
 
 
